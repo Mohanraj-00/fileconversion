@@ -1,5 +1,6 @@
 Flask==2.2.2
 werkzeug==2.2.2
+fpdf==1.7.2
 python-docx==0.8.11
 PyPDF2==2.11.0
-fpdf==1.7.2
+gunicorn==20.1.0  # For production deployment on Render
