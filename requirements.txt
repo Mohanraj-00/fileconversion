@@ -1,0 +1,4 @@
+Flask==2.2.2
+werkzeug==2.2.2
+python-docx==0.8.11
+PyPDF2==2.11.0
