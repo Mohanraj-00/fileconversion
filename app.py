@@ -34,6 +34,10 @@ def convert_pdf_to_word(pdf_file_path):
     
     return word_file_path
 
+@app.route('/')
+def home():
+    return "Welcome to the File Converter API!"  # Home route
+
 @app.route('/convert', methods=['POST'])
 def convert():
     if 'files' not in request.files:
