@@ -1,79 +1,73 @@
 from flask import Flask, request, send_file, jsonify
 import os
 from werkzeug.utils import secure_filename
-from fpdf import FPDF
+import PyPDF2
 import docx
-from PyPDF2 import PdfReader
+import pandas as pd
+import pytesseract
+from PIL import Image
+import pdf2image
+from pdf2docx import Converter
+from fpdf import FPDF
+import shutil
+import uuid
 
 app = Flask(__name__)
+UPLOAD_FOLDER = "uploads"
+OUTPUT_FOLDER = "outputs"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# Set up your upload folder and allowed file extensions
-UPLOAD_FOLDER = 'uploads/'
-ALLOWED_EXTENSIONS = {'pdf', 'txt'}  # Add other extensions as needed
+# Function to convert PDF to Word
+def pdf_to_word(pdf_path, output_path):
+    cv = Converter(pdf_path)
+    cv.convert(output_path, start=0, end=None)
+    cv.close()
+    return output_path
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limit to 16 MB
+# Function to convert PDF to Text using OCR
+def pdf_to_text_ocr(pdf_path, output_path):
+    images = pdf2image.convert_from_path(pdf_path)
+    text = "\n".join([pytesseract.image_to_string(img) for img in images])
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return output_path
 
-# Function to check allowed file extensions
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# Function to convert Image to Text
+def image_to_text(image_path, output_path):
+    text = pytesseract.image_to_string(Image.open(image_path))
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return output_path
 
-# Create a simple PDF to Word converter (as an example)
-def convert_pdf_to_word(pdf_file_path):
-    # Extract text from PDF using PyPDF2
-    reader = PdfReader(pdf_file_path)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text()
-
-    # Create a Word document with the extracted text using python-docx
-    doc = docx.Document()
-    doc.add_paragraph(text)
-    word_file_path = os.path.splitext(pdf_file_path)[0] + '.docx'
-    doc.save(word_file_path)
+@app.route("/convert", methods=["POST"])
+def convert_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
     
-    return word_file_path
-
-@app.route('/')
-def home():
-    return "Welcome to the File Converter API!"  # Home route
-
-@app.route('/convert', methods=['POST'])
-def convert():
-    if 'files' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    files = request.files.getlist('files')
-    conversion_type = request.form.get('conversion_type', None)
-
-    if not conversion_type:
-        return jsonify({"error": "Conversion type not specified"}), 400
+    file = request.files['file']
+    filename = secure_filename(file.filename)
+    file_ext = filename.split(".")[-1].lower()
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(file_path)
     
-    # Process each file
-    converted_files = []
-    for file in files:
-        if file.filename == '':
-            return jsonify({"error": "No selected file"}), 400
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-            
-            # Conversion logic
-            if conversion_type == 'pdf_to_word':
-                converted_file = convert_pdf_to_word(file_path)
-                converted_files.append(converted_file)
-            else:
-                return jsonify({"error": "Unsupported conversion type"}), 400
+    output_filename = str(uuid.uuid4())
+    output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+    
+    try:
+        if file_ext == "pdf":
+            output_path += ".docx"
+            pdf_to_word(file_path, output_path)
+        elif file_ext in ["png", "jpg", "jpeg"]:
+            output_path += ".txt"
+            image_to_text(file_path, output_path)
         else:
-            return jsonify({"error": "File not allowed"}), 400
+            return jsonify({"error": "Unsupported file type"}), 400
+        
+        return send_file(output_path, as_attachment=True)
     
-    # Send back the converted file(s)
-    if len(converted_files) == 1:
-        return send_file(converted_files[0], as_attachment=True)
-    else:
-        return jsonify({"message": "Files converted successfully", "converted_files": converted_files})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
