@@ -40,6 +40,10 @@ def image_to_text(image_path, output_path):
         f.write(text)
     return output_path
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Welcome to the File Converter API!"})
+
 @app.route("/convert", methods=["POST"])
 def convert_file():
     if 'file' not in request.files:
