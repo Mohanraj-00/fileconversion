@@ -70,4 +70,12 @@ def convert_file():
         return jsonify({"error": str(e)}), 500
     
 if __name__ == "__main__":
+    import sys
+    import subprocess
+    try:
+        import pandas
+    except ModuleNotFoundError:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas"])
+        import pandas
+    
     app.run(host="0.0.0.0", port=5000)
