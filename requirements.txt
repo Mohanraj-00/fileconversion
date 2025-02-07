@@ -1,8 +1,12 @@
+pip==25.0
+setuptools==68.0.0
+wheel==0.41.2
 Flask==2.2.5
 werkzeug==2.2.3
 PyPDF2==3.0.1
 python-docx==0.8.11
 pandas==1.5.3
+numpy==1.23.5
 pytesseract==0.3.10
 Pillow==9.4.0
 pdf2image==1.16.3
