@@ -40,6 +40,12 @@ def image_to_text(image_path, output_path):
         f.write(text)
     return output_path
 
+# Function to convert Excel to CSV
+def excel_to_csv(excel_path, output_path):
+    df = pd.read_excel(excel_path)
+    df.to_csv(output_path, index=False)
+    return output_path
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "Welcome to the File Converter API!"})
@@ -65,10 +71,13 @@ def convert_file():
         elif file_ext in ["png", "jpg", "jpeg"]:
             output_path += ".txt"
             image_to_text(file_path, output_path)
+        elif file_ext in ["xls", "xlsx"]:
+            output_path += ".csv"
+            excel_to_csv(file_path, output_path)
         else:
             return jsonify({"error": "Unsupported file type"}), 400
         
-        return send_file(output_path, as_attachment=True)
+        return send_file(output_path, as_attachment=True, mimetype='application/octet-stream')
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
